@@ -462,6 +462,8 @@ function Track(player, color, position)
         var width = this.handle.width();
         var height = this.handle.height();
         var offset = this.player.handle.offset();
+        console.log("position:", pos.xtl, pos.ytl, pos.xbr, pos.ybr);
+        console.log("width=",width,"height=",height,"offset: left=", offset.left, "top=", offset.top);
 
         if (hidden)
         {
@@ -931,7 +933,21 @@ function Track(player, color, position)
         this.handle.remove();
         this.deleted = true;
     }
-
+    
+    //box: x,y,w,h
+    this.overlap = function(box, xtl, ytl, xbr, ybr){
+        var res = 0;
+        var iw = Math.min(box[0]+box[2]-1, xbr) - Math.max(box[0], xtl) + 1;
+        if(iw > 0){
+            var ih = Math.min(box[1]+box[3]-1, ybr) - Math.max(box[1], ytl) + 1;
+            if(ih > 0){
+                var all_area = (xbr-xtl)*(ybr-ytl) + box[1]*box[3] - iw*ih;
+                res = iw * ih / all_area;
+            }
+         }
+         return res;
+    }
+ 
     /*
      * Estimates the position of the box for visualization purposes.
      * If the frame was annotated, returns that position, otherwise
@@ -940,8 +956,10 @@ function Track(player, color, position)
     this.estimate = function(frame)
     {
         var bounds = this.journal.bounds(frame);
+        var annotated = 0;
         if (bounds['leftframe'] == bounds['rightframe'])
         {
+            annotated = 1;
             return bounds['left'];
         }
 
@@ -954,7 +972,6 @@ function Track(player, color, position)
         {
             return bounds['right'];
         }
-
         var fdiff = bounds['rightframe'] - bounds['leftframe'];
         var xtlr = (bounds['right'].xtl - bounds['left'].xtl) / fdiff;
         var ytlr = (bounds['right'].ytl - bounds['left'].ytl) / fdiff;
@@ -969,19 +986,33 @@ function Track(player, color, position)
 
         var occluded = false;
         var outside = false;
-
-//        if (Math.abs(bounds['rightframe'] - frame) > Math.abs(bounds['leftframe'] - frame))
-//        {
-//            occluded = bounds['right'].occluded;
-//            outside = bounds['right'].outside;
-//        }
-//        else
-//        {
-            occluded = bounds['left'].occluded;
-            outside = bounds['left'].outside;
-//        }
-
-        return new Position(xtl, ytl, xbr, ybr, occluded, outside);
+        occluded = bounds['left'].occluded;
+        outside = bounds['left'].outside;
+        var pos = new Position(xtl, ytl, xbr, ybr, occluded, outside);
+        //console.log("tracking prediction: ", xtl, ytl, xbr, ybr);
+        if(!annotated){
+            var k = frame.toString();
+            if (k in json){
+                var detect = json[k];
+                for(var i=0;i<detect.length;i++){
+                    var box = json[k][i];
+                    //console.log("detection: ", box[0], box[1], box[0]+box[2]-1, box[1]+box[3]-1);
+                    var ovlp = this.overlap(box, xtl, ytl, xbr, ybr);                   
+                    if(ovlp > 0.5){
+			console.log("use detection");
+                        xtl = box[0];
+                        ytl = box[1];
+                        xbr = box[0] + box[2] - 1;
+                        ybr = box[1] + box[3] - 1;
+                        pos = new Position(xtl, ytl, xbr, ybr, occluded, outside);
+                        this.journal.mark(this.player.frame, pos);
+			break;
+                    }
+                }
+            }
+        }
+	//return new Position(xtl, ytl, xbr, ybr, occluded, outside);
+        return  pos;
     }
 
     this.draw(this.player.frame);
