@@ -13,7 +13,7 @@ function Job(data)
     this.blowradius = null;
     this.thisid = null;
     this.labels = null;
-
+    this.keyframe = null;
     this.frameurl = function(i)
     {
         folder1 = parseInt(Math.floor(i / 100));
@@ -64,6 +64,27 @@ function job_import(data)
             console.log("    " + job.labels[i] + " = " + job.attributes[i][j])
         }
     }
-
+    //get keyframe
+    var arr = [];
+    arr.push(job.start);
+    for (var i=job.start+1; i<=job.stop;i++){
+        var b = 0;
+        var c = 0;
+        if ((i-1).toString() in json){
+            b = json[(i-1).toString()].length;
+        }
+        if(i.toString() in json){
+           c = json[i.toString()].length;
+        }
+        if (c!=b){
+           arr.push(i);
+        }
+    }
+    this.keyframe = arr.slice();
+    var str="";
+    for (var i=0;i<this.keyframe.length;i++){
+        str += this.keyframe[i] + " ";
+    }
+    console.log(str);
     return job;
 }

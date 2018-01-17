@@ -440,13 +440,13 @@ function Track(player, color, position)
     this.locked = false;
     this.drawingnew = false;
 
-    this.journal.mark(this.player.job.start,
-        new Position(position.xtl, position.ytl,
-                     position.xbr, position.ybr, 
-                     false, true, []));
-
+    //used to tracking prediction left most location
+    this.journal.mark(this.player.job.start,new Position(position.xtl, position.ytl, position.xbr, position.ybr, false, true, []));
+    //console.log("mark job.start:", position.xtl, position.ytl, position.xbr, position.ybr);
     this.journal.mark(this.player.frame, position);
-
+    console.log("mark this.player.frame:", position.xtl, position.ytl, position.xbr, position.ybr);
+    
+    //used to tracking prediction right most location
     this.journal.artificialrightframe = this.player.job.stop;
     this.journal.artificialright = position;
 
@@ -983,13 +983,13 @@ function Track(player, color, position)
         var ytl = bounds['left'].ytl + ytlr * off;
         var xbr = bounds['left'].xbr + xbrr * off;
         var ybr = bounds['left'].ybr + ybrr * off;
-
         var occluded = false;
         var outside = false;
         occluded = bounds['left'].occluded;
         outside = bounds['left'].outside;
         var pos = new Position(xtl, ytl, xbr, ybr, occluded, outside);
         //console.log("tracking prediction: ", xtl, ytl, xbr, ybr);
+        
         if(!annotated){
             var k = frame.toString();
             if (k in json){
@@ -998,15 +998,15 @@ function Track(player, color, position)
                     var box = json[k][i];
                     //console.log("detection: ", box[0], box[1], box[0]+box[2]-1, box[1]+box[3]-1);
                     var ovlp = this.overlap(box, xtl, ytl, xbr, ybr);                   
-                    if(ovlp > 0.5){
-			console.log("use detection");
+                    if(ovlp > 0.2){
+			console.log("use detection on frame", frame);
                         xtl = box[0];
                         ytl = box[1];
                         xbr = box[0] + box[2] - 1;
                         ybr = box[1] + box[3] - 1;
                         pos = new Position(xtl, ytl, xbr, ybr, occluded, outside);
                         this.journal.mark(this.player.frame, pos);
-			break;
+		        break;
                     }
                 }
             }
@@ -1028,16 +1028,27 @@ function Journal(start, blowradius)
     this.artificialrightframe = null;
     this.blowradius = blowradius;
     this.start = start;
-
+    console.log("start", start, "radius", blowradius);
+    this.boxes = {};
+    
+    this.get_box = function(frame){
+         return this.boxes[frame];
+    }
+    
+    this.refresh_boxes = function(){
+         //for (var t in this.annotations){
+              
+             //if(!this.annotations[t+1])
+        // }
+            
+    }
     /*
      * Marks the boxes position.
      */
     this.mark = function(frame, position) 
     {
         console.log("Marking " + frame);
-
-        var newannotations = {};
-
+        /*var newannotations = {};
         for (var i in this.annotations)
         {
             if (Math.abs(i - frame) >= this.blowradius)
@@ -1054,8 +1065,7 @@ function Journal(start, blowradius)
                 console.log("Blowing out annotation at " + i);
             }
         }
-
-        this.annotations = newannotations;
+        this.annotations = newannotations;*/
         this.annotations[frame] = position;
     }
 
@@ -1078,6 +1088,7 @@ function Journal(start, blowradius)
 
         for (t in this.annotations)
         {
+            //console.log("annotations" + t);
             var item = this.annotations[t];
             itemtime = parseInt(t);
 
